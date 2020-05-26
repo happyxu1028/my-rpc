@@ -1,0 +1,4 @@
+# Project exclude paths
+/rpc-common/target/
+/rpc-consume/target/
+/rpc-provider/target/
