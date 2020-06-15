@@ -9,15 +9,21 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
+import my.study.loalbalance.ApiInvokeInfo;
+import my.study.loalbalance.LoadBalancer;
+import my.study.pojo.ServerInfo;
 import my.study.request.RpcRequest;
 import my.study.serialize.JSONSerializer;
 import my.study.serialize.RpcEncoder;
+import my.study.table.ServiceRegistryTable;
+import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
+import javax.annotation.Resource;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -26,14 +32,23 @@ import java.util.concurrent.Executors;
  * @Author: 长灵
  * @Date: 2020-05-20 22:49
  */
+@Component
 public class RpcConsumer {
 
-    /**
-     * 创建线程池对象
-     */
-    private static ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    @Resource
+    private ServiceRegistryTable serviceRegistryTable;
 
-    private static UserClientHandler userClientHandler;
+
+    /**
+     * 每个服务一个线程池,避免某个服务因异常原因阻塞时,线程池被塞满不可用
+     */
+    private Map<Class,ExecutorService> executorMap = new HashMap<>();
+//    private static ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
+    /**
+     * 每个api提供者对应一个ClientHandler
+     */
+    private static Map<ServerInfo,ClientHandler> serverClientHandlerMap = new HashMap<>();
 
     /**
      * 创建代理对象
@@ -47,9 +62,18 @@ public class RpcConsumer {
             @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
 
-                // 初始化netty客户端
-                if(userClientHandler == null){
-                    initClient();
+
+                List<ServerInfo> serviceProviders = serviceRegistryTable.getServiceProviders(serviceClassName.getName());
+                if(CollectionUtils.isEmpty(serviceProviders)){
+                    String info = String.format(">>>> api:%s have no provider",serviceClassName.getName());
+                    System.out.println(info);
+                    throw new RuntimeException(info);
+                }
+
+                ServerInfo candidatePdfServer = null;
+                for (ServerInfo thisProvider : serviceProviders) {
+                    candidatePdfServer = thisProvider;
+                    break;
                 }
 
                 RpcRequest request = new RpcRequest();
@@ -59,22 +83,48 @@ public class RpcConsumer {
                 request.setParameterTypes(method.getParameterTypes());
                 request.setParameters(args);
 
-
+                ClientHandler clientHandler = getClient(candidatePdfServer);
                 // 设置参数
-                userClientHandler.setRequest(request);
+                clientHandler.setRequest(request);
+                // 设置调用信息
+                clientHandler.setInvokeInfo(buildInvokeInfo(serviceClassName));
 
-                return executor.submit(userClientHandler).get();
+                ExecutorService executorService = executorMap.get(serviceClassName);
+                if(null == executorService){
+                    executorService = Executors.newFixedThreadPool(2);
+                }
+                return executorService.submit(clientHandler).get();
             }
 
 
         });
     }
 
-    private static void initClient() throws InterruptedException {
-        userClientHandler = new UserClientHandler();
+    /**
+     * 创建调用信息
+     * @param serviceClassName
+     * @return
+     */
+    private ApiInvokeInfo buildInvokeInfo(Class<?> serviceClassName) {
+        ApiInvokeInfo invokeInfo = new ApiInvokeInfo();
+        invokeInfo.setServiceName(serviceClassName.getName());
+        invokeInfo.setTargetServer(LoadBalancer.loadBalance());
+        return invokeInfo;
+    }
+
+    private static ClientHandler getClient(ServerInfo candidatePdfServer) throws InterruptedException {
+        ClientHandler clientHandler = serverClientHandlerMap.get(candidatePdfServer);
+
+        // 初始化netty客户端
+        if(clientHandler != null){
+            return clientHandler;
+        }
+
+        clientHandler = new ClientHandler();
         EventLoopGroup group = new NioEventLoopGroup();
 
         Bootstrap bootstrap = new Bootstrap();
+        final ClientHandler finalClientHandler = clientHandler;
         bootstrap.group(group)
                 .channel(NioSocketChannel.class)
                 .option(ChannelOption.TCP_NODELAY,true)
@@ -84,11 +134,12 @@ public class RpcConsumer {
                         ChannelPipeline pipeline = socketChannel.pipeline();
                         pipeline.addLast(new RpcEncoder(RpcRequest.class,new JSONSerializer()));
                         pipeline.addLast(new StringDecoder());
-                        pipeline.addLast(userClientHandler);
+                        pipeline.addLast(finalClientHandler);
 
                     }
                 });
 
-        bootstrap.connect("127.0.0.1",8088).sync();
+        bootstrap.connect(candidatePdfServer.getIp(),candidatePdfServer.getPort()).sync();
+        return clientHandler;
     }
 }

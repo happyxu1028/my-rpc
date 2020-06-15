@@ -12,6 +12,7 @@
         <module>rpc-common</module>
         <module>rpc-consume</module>
         <module>rpc-provider</module>
+        <module>rpc-config</module>
     </modules>
 
 

@@ -13,6 +13,7 @@ import my.study.request.RpcRequest;
 import my.study.serialize.JSONSerializer;
 import my.study.serialize.RpcDecoder;
 import my.study.serialize.RpcEncoder;
+import my.study.util.IpUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -27,8 +28,8 @@ import javax.annotation.Resource;
 public class ProviderServerBootStrap implements CommandLineRunner {
 
 
-    @Value("${server.port}")
-    private Integer port;
+    @Value("${netty.rpc.port}")
+    private Integer prcCommunicationPort;
 
     @Resource
     private UserServerHandler userServerHandler;
@@ -61,6 +62,6 @@ public class ProviderServerBootStrap implements CommandLineRunner {
 
                     }
                 });
-        serverBootstrap.bind("127.0.0.1", 8088).sync();
+        serverBootstrap.bind(IpUtil.getIp(), prcCommunicationPort).sync();
     }
 }

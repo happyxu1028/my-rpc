@@ -1,5 +1,6 @@
 package my.study.handler;
 
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import my.study.request.RpcRequest;
@@ -19,6 +20,7 @@ import java.lang.reflect.Method;
  * @Date: 2020-05-20 22:15
  */
 @Service
+@ChannelHandler.Sharable
 public class UserServerHandler extends ChannelInboundHandlerAdapter implements ApplicationContextAware {
 
     private ApplicationContext applicationContext;

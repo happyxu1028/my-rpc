@@ -1,25 +1,38 @@
 package my.study;
 
-import my.study.service.UserService;
+import my.study.wathcer.ZkWatcher;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+import javax.annotation.Resource;
 
 /**
  * Hello world!
  */
-public class ConsumeServerBootStrap {
-    public static final String providerName = "UserService#login#";
+@SpringBootApplication
+public class ConsumeServerBootStrap implements CommandLineRunner {
 
 
+    @Resource
+    private ZkWatcher zkWatcher;
 
     public static void main(String[] args) throws InterruptedException {
+        SpringApplication.run(ConsumeServerBootStrap.class);
+    }
 
-        RpcConsumer rpcConsumer = new RpcConsumer();
-        UserService proxy = (UserService) rpcConsumer.createProxy(UserService.class);
+    @Override
+    public void run(String... args) throws Exception {
+//        RpcConsumer rpcConsumer = new RpcConsumer();
+//        UserService proxy = (UserService) rpcConsumer.createProxy(UserService.class);
+//
+//        while (true) {
+//            Thread.sleep(2000);
+//            System.out.println(proxy.login("changling"));
+//        }
 
-        while (true) {
-            Thread.sleep(2000);
-            System.out.println(proxy.login("changling"));
-        }
-
+        zkWatcher.watchProviderListChange();
 
     }
+
 }

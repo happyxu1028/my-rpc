@@ -9,12 +9,14 @@
         <module name="rpc-consume" />
         <module name="rpc-provider" />
         <module name="rpc-common" />
+        <module name="rpc-config" />
       </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="rpc-consume" options="" />
+      <module name="rpc-config" options="-parameters" />
+      <module name="rpc-consume" options="-parameters" />
       <module name="rpc-provider" options="-parameters" />
     </option>
   </component>
