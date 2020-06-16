@@ -22,6 +22,8 @@ public class LoadBalancer {
      * @return
      */
     public static ServerInfo loadBalance(){
+
+
         Map.Entry<ServerInfo, Pair<Boolean, Long>> candidateServer = null;
         List<ServerInfo> candidateServerList = new ArrayList<>();
 
@@ -35,16 +37,19 @@ public class LoadBalancer {
             // 第一次得到可用的服务器
             if(null == candidateServer){
                 candidateServer = thisEntry;
+                candidateServerList.add(thisEntry.getKey());
                 continue;
             }
 
             // 进行比较
             long offset = pair.getValue() - candidateServer.getValue().getValue();
-            if(offset == 0){
+            if(offset == 0 || thisEntry.getValue().getValue() == 0L || candidateServer.getValue().getValue() == 0L){
                 candidateServerList.add(thisEntry.getKey());
                 continue;
             }else if (offset < 0 ){
                 candidateServer = thisEntry;
+                candidateServerList = new ArrayList<>();
+                candidateServerList.add(thisEntry.getKey());
             }
         }
 
@@ -54,11 +59,19 @@ public class LoadBalancer {
         }
 
         // 没有同等响应时间的机器,返回候选者
-        if(CollectionUtil.isEmpty(candidateServerList)){
+        if(candidateServerList.size() == 1){
+            System.out.println(">>>> 负载均衡 | 最终路由到服务器: "+candidateServer);
             return candidateServer.getKey();
         }
-        Random random  = new Random(candidateServerList.size());
 
-        return candidateServerList.get(random.nextInt());
+        System.out.println(">>>> 负载均衡 | 进入随机选择");
+        Random random  = new Random();
+        ServerInfo targetServer = candidateServerList.get(random.nextInt(candidateServerList.size()));
+        System.out.println(">>>> 负载均衡 | 最终路由到服务器: "+targetServer);
+        return targetServer;
+    }
+
+    public static void main(String[] args) {
+        System.out.println();
     }
 }

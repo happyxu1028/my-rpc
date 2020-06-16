@@ -40,14 +40,14 @@ public class InvokeStatisticsCenter {
         ServerInfo targetServer = apiInvokeInfo.getTargetServer();
         Pair<Boolean, Long> serverInfo = null;
         long handTime = apiInvokeInfo.getInvokeResponseTime().getTime() - apiInvokeInfo.getInvokeRequestTime().getTime();
-        DateTime limitTime = DateUtil.offsetMinute(apiInvokeInfo.getInvokeResponseTime(), 5);
-        if (apiInvokeInfo.getInvokeRequestTime().after(limitTime)) {
-            serverInfo = new Pair<>(false, handTime);
-        } else {
+        DateTime limitTime = DateUtil.offsetMinute(apiInvokeInfo.getInvokeRequestTime(), 5);
+        if (handTime <= 1000L*5L) {
             serverInfo = new Pair<>(true, handTime);
+        } else {
+            serverInfo = new Pair<>(false, handTime);
         }
         statisticsMap.put(targetServer, serverInfo);
-        System.out.println(">>>> 当前服务调用统计: "+ JSON.toJSONString(statisticsMap));
+        System.out.println(">>>> 当前服务调用统计: "+ JSON.toJSONString(statisticsMap)+"\r\n");
     }
 
 
@@ -71,10 +71,10 @@ public class InvokeStatisticsCenter {
         if (null == previousServerList) {
             // 初始化到服务注册
             for (ServerInfo providerInfo : providerInfoList) {
-                System.out.println(">>>>负载均衡 | 初始化候选服务器: "+providerInfo.getIp()+":"+providerInfo.getPort());
+                System.out.println(">>>> 负载均衡 | 初始化候选服务器: "+providerInfo.getIp()+":"+providerInfo.getPort());
                 statisticsMap.put(providerInfo, new Pair<Boolean, Long>(true, 0L));
             }
-            previousServerList = providerInfoList;
+
         } else {
 
             // 下线机器 (上一个版本的数据 - 现在版本的数据)
@@ -82,7 +82,7 @@ public class InvokeStatisticsCenter {
             if (!CollectionUtil.isEmpty(offlineServer)) {
 
                 offlineServer.forEach(t -> {
-                    System.out.println(">>>>负载均衡 | 移除候选服务器: "+t.getIp()+":"+t.getPort());
+                    System.out.println(">>>> 负载均衡 | 移除候选服务器: "+t.getIp()+":"+t.getPort());
                     statisticsMap.remove(t);
 
                 });
@@ -92,12 +92,13 @@ public class InvokeStatisticsCenter {
             List<ServerInfo> newOnlineServer = providerInfoList.stream().filter(item -> !previousServerList.contains(item)).collect(Collectors.toList());
             if (!CollectionUtil.isEmpty(newOnlineServer)) {
                 newOnlineServer.forEach(t -> {
-                    System.out.println(">>>>负载均衡 | 添加候选服务器: "+t.getIp()+":"+t.getPort());
+                    System.out.println(">>>> 负载均衡 | 添加候选服务器: "+t.getIp()+":"+t.getPort());
                     statisticsMap.put(t, new Pair<>(true, 0L));
                 });
             }
         }
-        System.out.println(">>>> 当前服务调用统计: "+ JSON.toJSONString(statisticsMap));
+        previousServerList = providerInfoList;
+        System.out.println(">>>> 当前候选服务器信息: "+ JSON.toJSONString(statisticsMap)+"\r\n");
     }
 
 }

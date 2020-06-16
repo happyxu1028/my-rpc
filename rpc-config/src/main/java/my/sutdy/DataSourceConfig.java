@@ -54,6 +54,8 @@ public class DataSourceConfig {
         @Override
         public void afterPropertiesSet() {
 
+            //   /db-config
+
             // 监听连接配置变化
             zkClient.subscribeDataChanges(configPath, new IZkDataListener() {
                 @Override

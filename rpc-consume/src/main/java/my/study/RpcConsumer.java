@@ -70,11 +70,6 @@ public class RpcConsumer {
                     throw new RuntimeException(info);
                 }
 
-                ServerInfo candidatePdfServer = null;
-                for (ServerInfo thisProvider : serviceProviders) {
-                    candidatePdfServer = thisProvider;
-                    break;
-                }
 
                 RpcRequest request = new RpcRequest();
                 request.setRequestId(UUID.randomUUID().toString());
@@ -83,11 +78,13 @@ public class RpcConsumer {
                 request.setParameterTypes(method.getParameterTypes());
                 request.setParameters(args);
 
-                ClientHandler clientHandler = getClient(candidatePdfServer);
+
+                ApiInvokeInfo apiInvokeInfo = buildInvokeInfo(serviceClassName);
+                ClientHandler clientHandler = getClient(apiInvokeInfo.getTargetServer());
                 // 设置参数
                 clientHandler.setRequest(request);
                 // 设置调用信息
-                clientHandler.setInvokeInfo(buildInvokeInfo(serviceClassName));
+                clientHandler.setInvokeInfo(apiInvokeInfo);
 
                 ExecutorService executorService = executorMap.get(serviceClassName);
                 if(null == executorService){
